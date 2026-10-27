@@ -1,0 +1,105 @@
+from pathlib import Path
+
+from cpu_swe_benchmark.repo_workloads import copy_repo_template, repo_template_path
+from cpu_swe_benchmark.workloads import get_workload
+
+
+def test_algorithm_lab_sorting_bugfix_workload_points_to_repo_template():
+    workload = get_workload("algorithm_lab_sorting_bugfix")
+    prompt = workload.render_prompt()
+
+    assert workload.repo_template == "algorithm_lab"
+    assert "algorithm_lab" in prompt
+    assert "PYTHONPATH=src python3 -m pytest tests/test_sorting.py" in prompt
+    assert "Run pytest tests/test_sorting.py" not in prompt
+    assert "Do not modify tests" in prompt
+    assert "VALIDATION_PASSED" in prompt
+    assert "10000" in prompt
+    assert "20000" in prompt
+    assert "CPU-intensive" in prompt
+    assert "Python script" in prompt
+    assert "sed regex" in prompt
+    assert "Sorting-specific hard constraints" in prompt
+    assert "swap adjacent items only when the left item is greater than the right item" in prompt
+    assert "`arr[j] > arr[j + 1]`" in prompt
+    assert "Do not add nested contradictory comparisons" in prompt
+    assert "If pytest still shows descending output" in prompt
+    assert "Do not combine source edits and pytest in the same bash command" in prompt
+    assert "wait for the next assistant step before running pytest" in prompt
+    assert "Create exactly one Python file" not in prompt
+    assert "benchmark_algorithm_lab_sorting_bugfix.py" not in prompt
+    assert "Do not create replacement benchmark scripts" in prompt
+
+
+def test_algorithm_lab_template_contains_python_package_and_failing_sorting_source():
+    template = repo_template_path("algorithm_lab")
+    sorting_source = (template / "src" / "algorithm_lab" / "sorting.py").read_text(encoding="utf-8")
+
+    assert (template / "pyproject.toml").exists()
+    assert (template / "src" / "algorithm_lab" / "sorting.py").exists()
+    assert (template / "tests" / "test_sorting.py").exists()
+    assert "for i in range(n):" in sorting_source
+    assert "for j in range(0, n - i - 1):" in sorting_source
+    assert "arr = list(arr)" in sorting_source
+    assert "arr[j] < arr[j + 1]" in sorting_source
+    assert "sorted(" not in sorting_source
+    assert ".sort(" not in sorting_source
+
+
+def test_algorithm_lab_template_requires_cpu_intensive_reference_sort_sizes():
+    test_source = (repo_template_path("algorithm_lab") / "tests" / "test_sorting.py").read_text(encoding="utf-8")
+
+    assert "10_000" in test_source
+    assert "20_000" in test_source
+    assert "random.Random" in test_source
+    assert "sorted(values)" in test_source
+    assert "inspect.getsource" in test_source
+    assert "\"sorted(\" not in source" in test_source
+    assert "\".sort(\" not in source" in test_source
+
+
+def test_memory_lab_bandwidth_bugfix_workload_points_to_repo_template():
+    workload = get_workload("memory_lab_bandwidth_bugfix")
+    prompt = workload.render_prompt()
+
+    assert workload.repo_template == "memory_lab"
+    assert "memory_lab" in prompt
+    assert "PYTHONPATH=src python3 -m pytest tests/test_bandwidth.py" in prompt
+    assert "# result += c" in prompt
+    assert "`result += c`" in prompt
+    assert "Do not modify tests" in prompt
+    assert "VALIDATION_PASSED" in prompt
+    assert "Do not create replacement benchmark scripts" in prompt
+    assert "16_000_000" in prompt
+    assert "256" in prompt
+    assert "sustained memory bandwidth" in prompt
+
+
+def test_memory_lab_template_contains_numpy_streaming_bug():
+    template = repo_template_path("memory_lab")
+    source = (template / "src" / "memory_lab" / "bandwidth.py").read_text(encoding="utf-8")
+    test_source = (template / "tests" / "test_bandwidth.py").read_text(encoding="utf-8")
+
+    assert (template / "pyproject.toml").exists()
+    assert (template / "src" / "memory_lab" / "bandwidth.py").exists()
+    assert (template / "tests" / "test_bandwidth.py").exists()
+    assert "result = np.empty_like(a)" in source
+    assert "np.multiply(b, scalar, out=result)" in source
+    assert "result += a" in source
+    assert "# result += c  # BUG: missing input stream" in source
+    assert "        result += c" not in source
+    assert "ELEMENTS = 16_000_000" in test_source
+    assert "PASSES = 256" in test_source
+    assert "np.allclose" in test_source
+    assert "for i in range" not in source
+
+
+def test_copy_repo_template_copies_files_without_aliasing(tmp_path: Path):
+    destination = tmp_path / "workspace"
+
+    copy_repo_template("algorithm_lab", destination)
+    copied_sorting = destination / "src" / "algorithm_lab" / "sorting.py"
+    copied_sorting.write_text("changed = True\n", encoding="utf-8")
+
+    original_sorting = repo_template_path("algorithm_lab") / "src" / "algorithm_lab" / "sorting.py"
+    assert "changed = True" not in original_sorting.read_text(encoding="utf-8")

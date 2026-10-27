@@ -1,0 +1,4 @@
+interface:
+  display_name: "MicroVM Agent Benchmark Methodology"
+  short_description: "Prepare and run portable full-agent microVM experiments"
+  default_prompt: "Use $cpu-swe-microvm-benchmark to discover my test environment, prepare the bundled runtime, validate one complete agent per microVM, and run a reproducible benchmark with scoped metrics."

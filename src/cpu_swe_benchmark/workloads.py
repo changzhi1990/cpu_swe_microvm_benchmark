@@ -1,0 +1,175 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from cpu_swe_benchmark.validation import VALIDATION_MARKER
+
+
+ALGORITHM_LAB_SORTING_BUGFIX_DESCRIPTION = """
+CPU-intensive Algorithm Lab Sorting Bugfix
+
+Problem Description:
+You are working in a small Python package repository named algorithm_lab. The
+sorting implementation is incorrect and the sorting tests are failing. Fix the
+source code so the sorting tests pass. The initial implementation performs
+Python-level bubble-sort work but has the wrong ordering logic, so pytest runs
+CPU-intensive 10000- and 20000-integer sorts before it fails and again after the
+fix.
+
+Instructions:
+1. Inspect the repository structure.
+2. Read the relevant source and test files.
+3. Run PYTHONPATH=src python3 -m pytest tests/test_sorting.py to reproduce the failure.
+4. Modify only files under src/.
+5. Do not modify tests.
+6. Implement a Python-level bubble sort that sorts a copy of the input without
+   delegating to built-in sorted() or list.sort().
+7. Use a Python script with pathlib/read_text/write_text, or rewrite the file
+   directly, when editing source code. Avoid sed regex replacements for lines
+   containing characters like [] because regex escaping can make the edit a
+   no-op.
+8. Sorting-specific hard constraints:
+   - Before editing, inspect `src/algorithm_lab/sorting.py` and
+     `tests/test_sorting.py`.
+   - For ascending bubble sort, swap adjacent items only when the left item is greater than the right item: `arr[j] > arr[j + 1]`.
+   - Do not add nested contradictory comparisons for the same pair, such as
+     checking both `arr[j] < arr[j + 1]` and `arr[j] > arr[j + 1]` in the same
+     branch.
+   - If pytest still shows descending output, re-check the comparison operator
+     before changing the swap assignment.
+   - Do not combine source edits and pytest in the same bash command.
+   - After any command that edits files under `src/`, wait for the next assistant step before running pytest.
+9. Re-run PYTHONPATH=src python3 -m pytest tests/test_sorting.py.
+10. Confirm the tests exercise sorting arrays of sizes 10000 and 20000.
+11. After the tests pass, run: PYTHONPATH=src python3 -m pytest tests/test_sorting.py && echo VALIDATION_PASSED
+12. Finish by running: echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+
+Requirements:
+- Preserve the public function name bubble_sort.
+- Return a sorted copy of the input list.
+- Do not mutate the input list.
+- Do not install packages.
+- Do not skip or edit tests.
+- The fixed implementation must handle the 10000-item and 20000-item sorting tests inside pytest.
+
+Please implement a complete solution and finish by running: echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+""".strip()
+
+
+MEMORY_LAB_BANDWIDTH_BUGFIX_DESCRIPTION = """
+Memory-bandwidth-sensitive Memory Lab Bugfix
+
+Problem Description:
+You are working in a small Python package repository named memory_lab. The
+streaming memory bandwidth kernel is incorrect and the bandwidth tests are
+failing. Fix the source code so the tests pass. The initial implementation
+performs NumPy vectorized streaming reads and writes but omits one input stream,
+so pytest runs the memory-bandwidth-sensitive workload before it fails and again
+after the fix. The large validation uses 16_000_000 float64 elements and 256
+streaming passes to create sustained memory bandwidth pressure.
+
+Instructions:
+1. Inspect the repository structure.
+2. Read the relevant source and test files.
+3. Run PYTHONPATH=src python3 -m pytest tests/test_bandwidth.py to reproduce the failure.
+4. Modify only files under src/.
+5. Do not modify tests.
+6. Implement the streaming triad with NumPy vectorized operations. Do not use
+   Python element-wise loops over array elements.
+7. The bug is a missing input stream in src/memory_lab/bandwidth.py. Keep
+   `np.multiply(b, scalar, out=result)`, keep `result += a`, and uncomment the
+   existing `# result += c` line inside the loop so it becomes `result += c`.
+8. Do not use Python element-wise loops in the fixed implementation.
+9. Use a Python script with pathlib/read_text/write_text, or rewrite the file
+   directly, when editing source code.
+10. Re-run PYTHONPATH=src python3 -m pytest tests/test_bandwidth.py.
+11. Confirm the tests exercise a sustained memory bandwidth workload with
+   16_000_000 float64 elements and 256 repeated streaming passes.
+12. After the tests pass, run: PYTHONPATH=src python3 -m pytest tests/test_bandwidth.py && echo VALIDATION_PASSED
+13. Finish by running: echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+
+Requirements:
+- Preserve the public function name streaming_triad.
+- Return a new output array.
+- Do not mutate input arrays.
+- Do not install packages.
+- Do not skip or edit tests.
+- Use NumPy vectorized streaming operations such as np.multiply and in-place
+  additions on the output array.
+
+Please implement a complete solution and finish by running: echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+""".strip()
+
+
+REFERENCE_TASK_DESCRIPTIONS: dict[str, str] = {
+    "algorithm_lab_sorting_bugfix": ALGORITHM_LAB_SORTING_BUGFIX_DESCRIPTION,
+    "memory_lab_bandwidth_bugfix": MEMORY_LAB_BANDWIDTH_BUGFIX_DESCRIPTION,
+}
+
+REPO_TEMPLATE_BY_WORKLOAD: dict[str, str] = {
+    "algorithm_lab_sorting_bugfix": "algorithm_lab",
+    "memory_lab_bandwidth_bugfix": "memory_lab",
+}
+
+
+@dataclass(frozen=True)
+class Workload:
+    name: str
+    task_description: str
+    repo_template: str | None = None
+    command_timeout_seconds: int = 120
+    task_timeout_seconds: int = 600
+    validation_marker: str = VALIDATION_MARKER
+
+    def render_prompt(self) -> str:
+        if self.repo_template:
+            return self._render_repo_prompt()
+        raise ValueError(f"Unsupported non-repo workload: {self.name}")
+
+    def _render_repo_prompt(self) -> str:
+        return f"""
+You are running the fixed repo-based coding benchmark workload: {self.name}.
+
+Reference task_description:
+{self.task_description}
+
+Benchmark harness requirements:
+- Work in the current repository directory.
+- Inspect existing files before editing.
+- Modify only source files under `src/` unless the task explicitly says otherwise.
+- Do not modify files under `tests/`.
+- Do not create replacement benchmark scripts or bypass the provided tests.
+- Do not install packages.
+- Each bash command has a timeout budget of {self.command_timeout_seconds} seconds.
+- The repository validation command must print `{self.validation_marker}` only after the requested pytest command passes.
+- After the validation command has printed `{self.validation_marker}`, finish in a separate final action by running exactly:
+  `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`
+
+Response format:
+Every response must include exactly one command inside a fenced code block tagged `mswea_bash_command`.
+
+Example:
+```mswea_bash_command
+PYTHONPATH=src python3 -m pytest tests/test_sorting.py
+```
+""".strip()
+
+
+def get_workload(name: str) -> Workload:
+    try:
+        task_description = REFERENCE_TASK_DESCRIPTIONS[name]
+    except KeyError as exc:
+        raise ValueError(f"Unknown workload: {name}") from exc
+    return Workload(name=name, task_description=task_description, repo_template=REPO_TEMPLATE_BY_WORKLOAD.get(name))
+
+
+def parse_workload_list(spec: str) -> list[Workload]:
+    names = list(REFERENCE_TASK_DESCRIPTIONS) if spec.strip() == "all" else [part.strip() for part in spec.split(",")]
+    workloads: list[Workload] = []
+    for name in names:
+        if not name:
+            continue
+        workloads.append(get_workload(name))
+    if not workloads:
+        raise ValueError("At least one workload must be selected")
+    return workloads

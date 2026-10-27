@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cpu-swe-microvm-benchmark"
+version = "0.1.0"
+description = "Firecracker microVM coding-agent benchmark with guest execution and layered telemetry."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "jinja2",
+    "numpy",
+    "pytest",
+    "requests",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+test = ["httpx", "pytest"]
+
+[project.scripts]
+cpu-swe-bench = "cpu_swe_benchmark.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

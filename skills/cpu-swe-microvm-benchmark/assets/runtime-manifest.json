@@ -1,0 +1,10 @@
+{
+  "mini_swe_agent_version": "2.4.5",
+  "mini_swe_agent_commit": "e187bcb2ff5825d85761a6f9c1f98c9fa6cfbc79",
+  "license": "MIT; see vendor/mini-swe-agent/LICENSE.md",
+  "tested_firecracker": "1.16.0",
+  "tested_guest_os": "Ubuntu 26.10",
+  "default_memory_mib": 2048,
+  "kernel_url": "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/20261023-dd7c24b0d165-0/x86_64/vmlinux-6.1.188",
+  "kernel_sha256": "fc7a33d23a629d64db61ddf12789c737c12edb1702a5ce9d5546b95ca21dc6ca"
+}
